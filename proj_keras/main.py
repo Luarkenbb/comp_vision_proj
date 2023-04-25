@@ -24,10 +24,13 @@ def main():
     train_data = pd.read_csv('proj_keras/train.csv')
     X_train = train_data.iloc[:,1:].values.astype('float32')
     X_train = X_train.reshape(-1,28,28,1)
+    X_train = (X_train - 127.5) / 127.5 # Normalize the images to [-1, 1]
+
+
 
     gan.fit(
         X_train,
-        epochs=100,
+        epochs=50,
         callbacks=[GANMonitor('images',num_img=1, latent_dim=100)]
     )
 

@@ -92,7 +92,8 @@ class GANMonitor(keras.callbacks.Callback):
 
         random_latent_vectors = tf.random.normal(shape=(self.num_img, self.latent_dim))
         generated_images = self.model.generator(random_latent_vectors)
-        generated_images *= 255
+        generated_images += 1
+        generated_images *= 127.5
         generated_images.numpy()
         for i in range(self.num_img):
             img = keras.preprocessing.image.array_to_img(generated_images[i])
