@@ -122,7 +122,38 @@ class GAN():
                 disc_loss_fake = self.discriminator.train_on_batch(gen_imgs, y_fake)
                 disc_loss = 0.5 * np.add(disc_loss_real, disc_loss_fake)
 
-            print(f'Epoch {epoch+1}/{epochs} | GAN Loss: {gan_loss[0]} | GAN Accuracy: {gan_loss[1]} | Discriminator Loss: {disc_loss[0]} | Discriminator Accuracy: {disc_loss[1]}')           
+            print(f'Epoch {epoch+1}/{epochs} | GAN Loss: {gan_loss[0]} | GAN Accuracy: {gan_loss[1]} | Discriminator Loss: {disc_loss[0]} | Discriminator Accuracy: {disc_loss[1]}')  
+            
+            if epoch % 10 == 0:
+                #generate 10 images and save
+                self.save_imgs(epoch)
+
+
+        return
+    
+    def save_imgs(self, epoch):
+        r, c = 2, 5
+        noise = np.random.normal(loc=0, scale=1, size=(r * c, self.latent_dim))
+        gen_imgs = self.generator.predict(noise)
+
+        # Rescale images from [-1, 1] tp [0, 1]
+        gen_imgs = 0.5 * gen_imgs + 0.5
+
+        fig, axs = plt.subplots(r, c, figsize=(10, 4))
+        cnt = 0
+        for i in range(r):
+            for j in range(c):
+                axs[i,j].imshow(gen_imgs[cnt,:,:,0], cmap='gray')
+                axs[i,j].axis('off')
+                cnt += 1
+        #create folder if not exist
+        if not os.path.exists('images'):
+            os.makedirs('images')
+        
+        fig.savefig(f'images/mnist_{epoch}.png')
+        plt.close()
+
+
         return
     
     def save_model(self, folder_path):
