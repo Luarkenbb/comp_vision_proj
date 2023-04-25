@@ -79,7 +79,7 @@ class GAN(keras.Model):
         }
 
 class GANMonitor(keras.callbacks.Callback):
-    def __init__(self, folder_path, num_img=3, latent_dim=128):
+    def __init__(self, folder_path, num_img=3, latent_dim=100):
         self.num_img = num_img
         self.latent_dim = latent_dim
         self.folder_path = folder_path

@@ -1,6 +1,7 @@
 import tensorflow as tf
-from model.GAN import GAN
-
+from model.model_network import build_discriminator, build_generator, build_optimizer
+from model.GAN import GAN, GANMonitor
+import pandas as pd
 
     
     
@@ -12,11 +13,24 @@ def check_gpu():
 
 def main():
     check_gpu()
-    gan = GAN()
-    gan.train_from_csv('proj_keras/train.csv',epochs=5000, batch_size=256)
-    #gan.save_model('model_test')
-    #gan.load_model('model_test')
-    #gan.genSampleFromGenerator(isShow=True, samples=50)
+    gan = GAN(discriminator=build_discriminator(), generator=build_generator(100), latent_dim=100)
+    gan.compile(
+        d_optimizer=build_optimizer(), 
+        g_optimizer=build_optimizer(),
+        loss_fn=tf.keras.losses.BinaryCrossentropy(),
+    )
+    
+    #get x_train, y_train
+    train_data = pd.read_csv('proj_keras/train.csv')
+    X_train = train_data.iloc[:,1:].values.astype('float32')
+    X_train = X_train.reshape(-1,28,28,1)
+
+    gan.fit(
+        X_train,
+        epochs=100,
+        callbacks=[GANMonitor('images',num_img=1, latent_dim=100)]
+    )
+
 
     return
 
