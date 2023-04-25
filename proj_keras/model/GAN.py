@@ -8,6 +8,7 @@ from tensorflow.keras.models import load_model
 
 import torch.nn as nn
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 import os
 class GAN():
@@ -83,51 +84,47 @@ class GAN():
     
     def train_from_csv(self, csv_path, epochs=500, batch_size=256):
         #load csv
-        X_train = np.loadtxt(csv_path, delimiter=',', dtype='str')
-        #ignore first row
-        X_train = X_train[1:]
-        #first col is label, others are pixel values
-        X_train = X_train[:, 1:]
-        #astype to float32
-        X_train = X_train.astype('float32')
-        #reshape to 28x28
+        train_data = pd.read_csv(csv_path)
+        
+        #get X_train
+        X_train = train_data.drop('label', axis=1)
+        X_train = X_train.values
         X_train = X_train.reshape(-1, 28, 28, 1)
 
         self.train(X_train, epochs, batch_size)
-
         return
     
     def train(self, X_train, epochs=500, batch_size=256):
-        #train model
+        #assume X_train is from 0 to 255 --> convert to float32 --> normalize to [-1, 1]
+        X_train = X_train.astype('float32')
+        X_train = X_train / 255.0
+        X_train = X_train * 2 - 1
+        
+        #train
         for epoch in range(epochs):
-        
-            #train discriminator
-            #get random batch of real images
-            idx = np.random.randint(0, X_train.shape[0], batch_size)
-            real_imgs = X_train[idx]
-            #generate fake images
-            noise = np.random.normal(0, 1, (batch_size, self.latent_dim))
-            fake_imgs = self.generator.predict(noise)
-            #train discriminator
-            d_loss_real, d_acc_real = self.discriminator.train_on_batch(real_imgs, np.ones((batch_size, 1)))
-            d_loss_fake, d_acc_fake = self.discriminator.train_on_batch(fake_imgs, np.zeros((batch_size, 1)))
-            d_loss = 0.5 * np.add(d_loss_real, d_loss_fake)
-            d_acc = 0.5 * np.add(d_acc_real, d_acc_fake)
+            for __ in range(X_train.shape[0] // batch_size):
+                #train generator
+                noise = np.random.normal(loc=0, scale=1, size=(batch_size, self.latent_dim))
+                gen_imgs = self.generator.predict_on_batch(noise)
+                y_gen = np.ones((batch_size, 1))
+                self.discriminator.trainable = False
+                gan_loss = self.gan.train_on_batch(noise, y_gen)
 
-            #train generator
-            noise = np.random.normal(0, 1, (batch_size, self.latent_dim))
-            g_loss, g_acc = self.gan.train_on_batch(noise, np.ones((batch_size, 1)))
-            
-            
-            #print loss
-            print(f'epoch: {epoch}, d_loss: {d_loss}, d_acc: {d_acc} g_loss: {g_loss}, g_acc: {g_acc}')
-            
-            #save model
-            #if epoch % 100 == 0:
-            #    self.save_model(epoch)
-        
-            
+                #train discriminator
+                idx = np.random.randint(0, X_train.shape[0], batch_size)
+                imgs = X_train[idx]
+                noise = np.random.normal(loc=0, scale=1, size=(batch_size, self.latent_dim))
+                gen_imgs = self.generator.predict_on_batch(noise)
+                y_real = np.ones((batch_size, 1))
+                y_fake = np.zeros((batch_size, 1))
+                self.discriminator.trainable = True
+                disc_loss_real = self.discriminator.train_on_batch(imgs, y_real)
+                disc_loss_fake = self.discriminator.train_on_batch(gen_imgs, y_fake)
+                disc_loss = 0.5 * np.add(disc_loss_real, disc_loss_fake)
+
+            print(f'Epoch {epoch+1}/{epochs} | GAN Loss: {gan_loss[0]} | GAN Accuracy: {gan_loss[1]} | Discriminator Loss: {disc_loss[0]} | Discriminator Accuracy: {disc_loss[1]}')           
         return
+    
     def save_model(self, folder_path):
         #create folder if not exist
         if not os.path.exists(folder_path):

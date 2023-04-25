@@ -13,10 +13,10 @@ def check_gpu():
 def main():
     check_gpu()
     gan = GAN()
-    #gan.train_from_csv('train.csv',epochs=5000, batch_size=256)
+    gan.train_from_csv('proj_keras/train.csv',epochs=5000, batch_size=256)
     #gan.save_model('model_test')
-    gan.load_model('model_test')
-    gan.genSampleFromGenerator(isShow=True, samples=50)
+    #gan.load_model('model_test')
+    #gan.genSampleFromGenerator(isShow=True, samples=50)
 
     return
 
