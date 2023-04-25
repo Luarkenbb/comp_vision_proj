@@ -1,210 +1,102 @@
-
 import tensorflow as tf
 
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Dropout, Flatten, LeakyReLU, Reshape
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.models import load_model
+from tensorflow import keras
 
 import torch.nn as nn
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import os
-class GAN():
 
-    def __init__(self):
+class GAN(keras.Model):
+    def __init__(self, discriminator, generator, latent_dim):
+        super().__init__()
+        self.discriminator = discriminator
+        self.generator = generator
+        self.latent_dim = latent_dim
+
+    def compile(self, d_optimizer, g_optimizer, loss_fn):
+        super().compile()
+        self.d_optimizer = d_optimizer
+        self.g_optimizer = g_optimizer
+        self.loss_fn = loss_fn
+        self.d_loss_metric = keras.metrics.Mean(name="d_loss")
+        self.g_loss_metric = keras.metrics.Mean(name="g_loss")
+    
+    @property
+    def metrics(self):
+        return [self.d_loss_metric, self.g_loss_metric]
+    
+    def train_step(self, real_images):
+        # Sample random points in the latent space
+        batch_size = tf.shape(real_images)[0]
+        random_latent_vectors = tf.random.normal(shape=(batch_size, self.latent_dim))
+
+        # Decode them to fake images
+        generated_images = self.generator(random_latent_vectors)
+
+        # Combine them with real images
+        combined_images = tf.concat([generated_images, real_images], axis=0)
+
+        # Assemble labels discriminating real from fake images
+        labels = tf.concat([tf.ones((batch_size, 1)), tf.zeros((batch_size, 1))], axis=0)
         
-        self.img_rows = 28
-        self.img_cols = 28
-        self.channels = 1
+        # Add random noise to the labels - important trick!
+        labels += 0.05 * tf.random.uniform(tf.shape(labels))
 
-        self.img_shape = (self.img_rows, self.img_cols, self.channels)
-        self.latent_dim = 100
+        # Train the discriminator
+        with tf.GradientTape() as tape:
+            predictions = self.discriminator(combined_images)
+            d_loss = self.loss_fn(labels, predictions)
 
-        self.discriminator = self.build_discriminator()
-        self.generator = self.build_generator()
-        self.gan = self.build_gan(self.generator, self.discriminator)
+        grads = tape.gradient(d_loss, self.discriminator.trainable_weights)
+        self.d_optimizer.apply_gradients(zip(grads, self.discriminator.trainable_weights))
 
+        # Sample random points in the latent space
+        random_latent_vectors = tf.random.normal(shape=(batch_size, self.latent_dim))
+
+        # Assemble labels that say "all real images"
+        misleading_labels = tf.zeros((batch_size, 1))
+
+        # Train the generator (note that we should *not* update the weights
+        # of the discriminator)!
+        with tf.GradientTape() as tape:
+            predictions = self.discriminator(self.generator(random_latent_vectors))
+            g_loss = self.loss_fn(misleading_labels, predictions)
+        grads = tape.gradient(g_loss, self.generator.trainable_weights)
+        self.g_optimizer.apply_gradients(zip(grads, self.generator.trainable_weights))
+
+        # Update metrics
+        self.d_loss_metric.update_state(d_loss)
+        self.g_loss_metric.update_state(g_loss)
+        return {
+            "d_loss": self.d_loss_metric.result(),
+            "g_loss": self.g_loss_metric.result(),
+        }
+
+class GANMonitor(keras.callbacks.Callback):
+    def __init__(self, folder_path, num_img=3, latent_dim=128):
+        self.num_img = num_img
+        self.latent_dim = latent_dim
+        self.folder_path = folder_path
         return
     
-    def build_generator(self):
-        #100->32->64->128->784
-
-        model = Sequential(name='generator')
-        model.add(Dense(32, input_dim=self.latent_dim))
-        model.add(LeakyReLU(alpha=0.2))
-        model.add(Dropout(0.3))
-
-        model.add(Dense(64))
-        model.add(LeakyReLU(alpha=0.2))
-        model.add(Dropout(0.3))
-
-        model.add(Dense(128))
-        model.add(LeakyReLU(alpha=0.2))
-        model.add(Dropout(0.3))
-
-        model.add(Dense(784))
-        model.add(Reshape((28, 28, 1)))
-
-        return model
-    
-    def build_discriminator(self):
-        #784->128->64->32->1
-        model = Sequential(name='discriminator')
-        model.add(Dense(1,input_shape=[28,28,1]))
-        model.add(Flatten())
-        
-        model.add(Dense(128))
-        model.add(LeakyReLU(alpha=0.2))
-        model.add(Dropout(0.3))
-
-        model.add(Dense(64))
-        model.add(LeakyReLU(alpha=0.2))
-        model.add(Dropout(0.3))
-
-        model.add(Dense(32))
-        model.add(LeakyReLU(alpha=0.2))
-        model.add(Dropout(0.3))
-
-        model.add(Dense(1, activation='sigmoid'))
-
-        return model
-
-    def build_gan(self, gen, disc):
-        optimizer = Adam(0.002, 0.5)
-        
-       
-
-        gan = Sequential([gen, disc], name='gan')
-        disc.compile(loss='binary_crossentropy', optimizer=optimizer, metrics=['accuracy'])
-        disc.trainable = False
-        gan.compile(loss='binary_crossentropy', optimizer=optimizer, metrics=['accuracy'])
-        return gan
-    
-    def train_from_csv(self, csv_path, epochs=500, batch_size=256):
-        #load csv
-        train_data = pd.read_csv(csv_path)
-        
-        #get X_train
-        X_train = train_data.drop('label', axis=1)
-        X_train = X_train.values
-        X_train = X_train.reshape(-1, 28, 28, 1)
-
-        self.train(X_train, epochs, batch_size)
-        return
-    
-    def train(self, X_train, epochs=500, batch_size=256):
-        #assume X_train is from 0 to 255 --> convert to float32 --> normalize to [-1, 1]
-        X_train = X_train.astype('float32')
-        X_train = X_train / 255.0
-        X_train = X_train * 2 - 1
-        
-        #train
-        for epoch in range(epochs):
-            for __ in range(X_train.shape[0] // batch_size):
-                #train generator
-                noise = np.random.normal(loc=0, scale=1, size=(batch_size, self.latent_dim))
-                gen_imgs = self.generator.predict_on_batch(noise)
-                y_gen = np.ones((batch_size, 1))
-                self.discriminator.trainable = False
-                gan_loss = self.gan.train_on_batch(noise, y_gen)
-
-                #train discriminator
-                idx = np.random.randint(0, X_train.shape[0], batch_size)
-                imgs = X_train[idx]
-                noise = np.random.normal(loc=0, scale=1, size=(batch_size, self.latent_dim))
-                gen_imgs = self.generator.predict_on_batch(noise)
-                y_real = np.ones((batch_size, 1))
-                y_fake = np.zeros((batch_size, 1))
-                self.discriminator.trainable = True
-                disc_loss_real = self.discriminator.train_on_batch(imgs, y_real)
-                disc_loss_fake = self.discriminator.train_on_batch(gen_imgs, y_fake)
-                disc_loss = 0.5 * np.add(disc_loss_real, disc_loss_fake)
-
-            print(f'Epoch {epoch+1}/{epochs} | GAN Loss: {gan_loss[0]} | GAN Accuracy: {gan_loss[1]} | Discriminator Loss: {disc_loss[0]} | Discriminator Accuracy: {disc_loss[1]}')  
-            
-            if epoch % 10 == 0:
-                #generate 10 images and save
-                self.save_imgs(epoch)
-
-
-        return
-    
-    def save_imgs(self, epoch):
-        r, c = 2, 5
-        noise = np.random.normal(loc=0, scale=1, size=(r * c, self.latent_dim))
-        gen_imgs = self.generator.predict(noise)
-
-        # Rescale images from [-1, 1] tp [0, 1]
-        gen_imgs = 0.5 * gen_imgs + 0.5
-
-        fig, axs = plt.subplots(r, c, figsize=(10, 4))
-        cnt = 0
-        for i in range(r):
-            for j in range(c):
-                axs[i,j].imshow(gen_imgs[cnt,:,:,0], cmap='gray')
-                axs[i,j].axis('off')
-                cnt += 1
+    def on_epoch_end(self, epoch, logs=None):
         #create folder if not exist
-        if not os.path.exists('images'):
-            os.makedirs('images')
-        
-        fig.savefig(f'images/mnist_{epoch}.png')
-        plt.close()
+        if not os.path.exists(self.folder_path):
+            os.makedirs(self.folder_path)
 
+        random_latent_vectors = tf.random.normal(shape=(self.num_img, self.latent_dim))
+        generated_images = self.model.generator(random_latent_vectors)
+        generated_images *= 255
+        generated_images.numpy()
+        for i in range(self.num_img):
+            img = keras.preprocessing.image.array_to_img(generated_images[i])
+            img_path = os.path.join(self.folder_path, "generated_img_%03d_%d.png" % (epoch, i))
 
+            img.save(img_path)
         return
-    
-    def save_model(self, folder_path):
-        #create folder if not exist
-        if not os.path.exists(folder_path):
-            os.makedirs(folder_path)
-
-        #save model
-        path_generator = os.path.join(folder_path, f'generator.h5')
-        path_discriminator = os.path.join(folder_path, f'discriminator.h5')
-        path_gan = os.path.join(folder_path, f'gan.h5')
-
-        self.generator.save(path_generator)
-        self.discriminator.save(path_discriminator)
-        self.gan.save(path_gan)
-        return
-    def load_model(self, folder_path):
-        #load model
-        path_generator = os.path.join(folder_path, f'generator.h5')
-        path_discriminator = os.path.join(folder_path, f'discriminator.h5')
-        path_gan = os.path.join(folder_path, f'gan.h5')
-
-        self.generator = load_model(path_generator)
-        self.discriminator = load_model(path_discriminator)
-        self.gan = load_model(path_gan)
-        return
-
-
-    def genSampleFromGenerator(self, isShow=False, samples=10):
-        #generate sample from generator
-        
-        x_fake = self.generator.predict(np.random.normal(loc=0, scale=1, size=(samples, 100)))
-
-        rows = samples // 5
-        cols = 5
-
-
-        for k in range(samples):
-            plt.subplot(rows, cols, k+1)
-            plt.imshow(x_fake[k].reshape(28, 28), cmap='gray')
-            plt.axis('off')
-
-
-        plt.tight_layout()
-        plt.show()
-        return 
-    
-##test code
-if __name__ == '__main__':
-    gan = GAN()
-    print(gan.generator.summary())
-    print(gan.discriminator.summary())
-    print(gan.gan.summary()) 
-    
