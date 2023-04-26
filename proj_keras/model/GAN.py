@@ -1,16 +1,7 @@
 import tensorflow as tf
-
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Dropout, Flatten, LeakyReLU, Reshape
-from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.models import load_model
 from tensorflow import keras
 from tensorflow.keras.callbacks import ModelCheckpoint
 
-import torch.nn as nn
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
 import os
 
 class GAN(keras.Model):
