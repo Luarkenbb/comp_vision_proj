@@ -103,3 +103,24 @@ class CGAN(keras.Model):
         }
 
 
+    def generate_images(self, label, num_samples=25):
+        """
+        Generate fake images from given labels.
+        args:
+            label: int, label to generate images
+        """
+        # create one-hot labels from given selected label
+        one_hot_labels = tf.one_hot([label] * num_samples, self.num_classes)
+        # create random latent vectors
+        random_latent_vectors = tf.random.normal(shape=(num_samples, self.latent_dim))
+        # concatenate random latent vectors and one-hot labels
+        random_vector_labels = tf.concat(
+            [random_latent_vectors, one_hot_labels], axis=1
+        )
+        # decode random latent vectors and one-hot labels to fake images
+        generated_images = self.generator(random_vector_labels)
+        # reshape fake images to (num_samples, 28, 28)
+        generated_images = tf.reshape(generated_images, (num_samples, 28, 28))
+        # scale fake images to (num_samples, 28, 28, 1)
+        generated_images = tf.expand_dims(generated_images, -1)
+        return generated_images

@@ -60,11 +60,20 @@ def runGAN():
 
     gan.fit(
         dataset,
-        epochs=1,
-        batch_size=256,
-        steps_per_epoch=256,
+        epochs=10,
         shuffle=True,
     )
+
+    generated_images = gan.generate_images(1,1)
+    
+    import matplotlib.pyplot as plt
+    
+    for i in range(1):
+        # change values from [-1,1] to [0,255]
+        img = (generated_images[i] + 1) * 127.5
+        plt.imshow(img, cmap='gray')
+        plt.show()
+
 
 
     return
