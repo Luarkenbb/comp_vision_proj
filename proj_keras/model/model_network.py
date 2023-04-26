@@ -28,7 +28,7 @@ def build_generator(latent_dim):
         model.add(LeakyReLU(alpha=0.2))
         model.add(Dropout(0.3))
 
-        model.add(Dense(784))
+        model.add(Dense(784, activation='tanh'))
         model.add(Reshape((28, 28, 1)))
 
         return model

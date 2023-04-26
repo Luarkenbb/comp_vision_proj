@@ -5,6 +5,7 @@ from tensorflow.keras.layers import Dense, Dropout, Flatten, LeakyReLU, Reshape
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.models import load_model
 from tensorflow import keras
+from tensorflow.keras.callbacks import ModelCheckpoint
 
 import torch.nn as nn
 import numpy as np
@@ -101,3 +102,12 @@ class GANMonitor(keras.callbacks.Callback):
 
             img.save(img_path)
         return
+    
+def getModelCheckPoint(folder, save_freq='epoch', monitor='g_loss', save_weights_only=True, period=1):
+    #create folder if not exist
+    if not os.path.exists(folder):
+        os.makedirs(folder)
+    
+    ckpt_path = os.path.join(folder, "ckpt_{epoch:04d}--{g_loss:.4f}--{d_loss:.4f}.h5")
+
+    return ModelCheckpoint(ckpt_path, save_freq=save_freq, monitor=monitor, save_weights_only=save_weights_only, period=period)

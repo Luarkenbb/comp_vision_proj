@@ -1,6 +1,6 @@
 import tensorflow as tf
 from model.model_network import build_discriminator, build_generator, build_optimizer
-from model.GAN import GAN, GANMonitor
+from model.GAN import GAN, GANMonitor, getModelCheckPoint
 import pandas as pd
 
     
@@ -26,12 +26,13 @@ def main():
     X_train = X_train.reshape(-1,28,28,1)
     X_train = (X_train - 127.5) / 127.5 # Normalize the images to [-1, 1]
 
-
+    
 
     gan.fit(
         X_train,
         epochs=50,
-        callbacks=[GANMonitor('images',num_img=1, latent_dim=100)]
+        callbacks=[getModelCheckPoint('./modelCheckPoint'),
+                   GANMonitor('images',num_img=1, latent_dim=100)]
     )
 
 
