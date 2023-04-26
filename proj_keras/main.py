@@ -11,7 +11,7 @@ def check_gpu():
     print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('GPU')))
 
 
-def main():
+def runGAN():
     check_gpu()
     gan = GAN(discriminator=build_discriminator(), generator=build_generator(100), latent_dim=100)
     gan.compile(
@@ -38,4 +38,7 @@ def main():
 
     return
 
-main()
+def runCGAN():
+
+    return
+runGAN()
