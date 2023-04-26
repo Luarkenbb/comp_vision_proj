@@ -29,7 +29,12 @@ class CGAN(keras.Model):
         self.loss_fn = loss_fn
 
     def train_step(self, data):
+        # Unpack the data. Its structure depends on your model and
+        # on what you pass to `fit()`.
+        real_images, one_hot_labels = data
         
+
+
         return
 
 

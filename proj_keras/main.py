@@ -1,6 +1,8 @@
 import tensorflow as tf
+
 from model.model_network import build_discriminator, build_generator, build_optimizer
 from model.GAN import GAN, GANMonitor, getModelCheckPoint
+
 import pandas as pd
 
     
@@ -35,10 +37,6 @@ def runGAN():
                    GANMonitor('images',num_img=1, latent_dim=100)]
     )
 
-
-    return
-
-def runCGAN():
 
     return
 runGAN()
