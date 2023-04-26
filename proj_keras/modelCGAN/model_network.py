@@ -8,71 +8,38 @@ from tensorflow import keras
 from tensorflow.keras import Model
 
 def build_generator(latent_dim, num_classes = 10):
-    in_label = Input(shape=(1,))
-    li = Embedding(num_classes, 50)(in_label)
-    ##remarks from discriminator
-    # 7 * 7 * 64
-    li = Dense(7 * 7)(li)
-    li = Reshape((7, 7, 1))(li)
+    generator_in_channel = latent_dim + num_classes
 
-    # image generator input
-    in_lat = Input(shape=(latent_dim,))
-    # foundation for 7x7 image
-    n_nodes = 64 * 7 * 7
-    gen = Dense(n_nodes)(in_lat)
-    gen = LeakyReLU(alpha=0.2)(gen)
-    gen = Reshape((7, 7, 64))(gen)
+    model = Sequential(name = 'generator')
+    model.add(Input(shape = (generator_in_channel,)))
+    model.add(Dense(7 * 7 * generator_in_channel))
+    model.add(LeakyReLU(alpha=0.2))
+    model.add(Reshape((7, 7, generator_in_channel)))
 
-    # merge image gen and label input
-    merge = Concatenate()([gen, li])
-    gen = Conv2DTranspose(128, (4,4), strides=(2,2), padding='same')(merge)
-    gen = LeakyReLU(alpha=0.2)(gen)
-
-    gen = Conv2DTranspose(128, (4,4), strides=(2,2), padding='same')(gen)
-    gen = LeakyReLU(alpha=0.2)(gen)
-
-    out_layer = Conv2D(1, (7,7), activation='tanh', padding='same')(gen)
-
-    model = Model([in_lat, in_label], out_layer, name='generator')
+    model.add(Conv2DTranspose(128, (4, 4), strides=(2, 2), padding="same"))
+    model.add(LeakyReLU(alpha=0.2))
+    model.add(Conv2DTranspose(128, (4, 4), strides=(2, 2), padding="same"))
+    model.add(LeakyReLU(alpha=0.2))
+    model.add(Conv2D(1, (7, 7), padding="same", activation="sigmoid"))
 
     return model
 
 def build_discriminator(img_shape = (28,28,1), num_classes = 10):
-    #label input
-    in_label = Input(shape=(1,))
-    #embedding for categorical input
-    li = Embedding(num_classes, 50)(in_label)
-    li = Dense(img_shape[0]*img_shape[1])(li)
-    # reshape to additional C
-    li = Reshape((img_shape[0], img_shape[1], 1))(li)
-
-    #image input
-    in_image = Input(shape=img_shape)
-    #concat li and in_image
-    merge = Concatenate()([in_image, li])
-
-    #784->128->64->32->1
-    #fe = Conv2DTranspose(128, strides=(2,2), padding='same')(merge)
-    fe = Conv2D(128, (3,3), strides=(2,2), padding='same')(merge)
-    fe = LeakyReLU(alpha=0.2)(fe)
-    fe = Dropout(0.3)(fe)
-
-    fe = Conv2D(64, (3,3), strides=(2,2), padding='same')(fe)
-    fe = LeakyReLU(alpha=0.2)(fe)
-    fe = Dropout(0.3)(fe)
-
-    fe = Flatten()(fe)
-    fe = Dense(1, activation='sigmoid')(fe)
-
-    model = Model([in_image, in_label], fe, name='discriminator')
-    opt = Adam(lr=0.0002, beta_1=0.5)
-    model.compile(loss='binary_crossentropy', optimizer=opt, metrics=['accuracy'])
+    discriminator_in_channels = num_classes + 1
+    model = Sequential(name = 'discriminator')
+    model.add(Input(shape = (28, 28, discriminator_in_channels)))
+    model.add(Conv2D(64, (3, 3), strides=(2, 2), padding="same"))
+    model.add(LeakyReLU(alpha=0.2))
+    model.add(Conv2D(128, (3, 3), strides=(2, 2), padding="same"))
+    model.add(LeakyReLU(alpha=0.2))
+    model.add(Flatten())
+    model.add(Dense(1))
 
     return model
 
 if __name__ == '__main__':
     print("test area")
-    latent_dim = 100
+    latent_dim = 50
     generator = build_generator(latent_dim)
     generator.summary()
     discriminator = build_discriminator()
