@@ -188,4 +188,6 @@ if __name__ == "__main__":
 
     dataset = gan.load_dataset('proj_keras/train.csv')
     gan.train(dataset, noise_size=50, n_epochs=30, n_batch=512)
-    gan.plot_results(gan.generate_fake_samples(50, 8)[0], 8)    
+    #get samples from generator
+    [X_fake, labels], y_fake = gan.generate_fake_samples(50, 10)    
+    gan.plot_results(X_fake, 10)
