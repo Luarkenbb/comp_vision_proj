@@ -1,8 +1,6 @@
 import tensorflow as tf
-
 from model.model_network import build_discriminator, build_generator, build_optimizer
 from model.GAN import GAN, GANMonitor, getModelCheckPoint
-
 import pandas as pd
 
     
@@ -13,7 +11,7 @@ def check_gpu():
     print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('GPU')))
 
 
-def runGAN():
+def main():
     check_gpu()
     gan = GAN(discriminator=build_discriminator(), generator=build_generator(100), latent_dim=100)
     gan.compile(
@@ -32,11 +30,12 @@ def runGAN():
 
     gan.fit(
         X_train,
-        epochs=50,
+        epochs=250,
         callbacks=[getModelCheckPoint('./modelCheckPoint'),
                    GANMonitor('images',num_img=1, latent_dim=100)]
     )
 
 
     return
-runGAN()
+
+main()
