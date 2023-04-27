@@ -20,12 +20,19 @@ class CGAN():
     
 
     def load_dataset(self, csv_path):
-        train_data = pd.read_csv(csv_path)
-        X_train = train_data.iloc[:,1:].values.astype(np.float32)
-        X_train = X_train.reshape(-1,28,28,1) * 2. - 1.
-        y_train = train_data.iloc[:,0].values.astype(np.int32)
+        
 
-        return [X_train, y_train]
+        
+        data = pd.read_csv('proj_keras/train.csv')
+        data = data.to_numpy()
+        print(data.shape)
+        #first column is the label and the rest is the image
+        labels = data[:,0]
+        images = data[:,1:]
+        images = images.reshape(-1, 28, 28, 1)
+        images = images.astype('float32')
+        images = (images - 127.5) / 127.5 # Normalize the images to [-1, 1]
+        return [images, labels]
     
     def get_dataset_samples(self, dataset, num_samples):
         Xs, lbls = dataset
@@ -184,10 +191,11 @@ class CGAN():
         return
 ##test area
 if __name__ == "__main__":
+    
+    
     gan = CGAN()
-
     dataset = gan.load_dataset('proj_keras/train.csv')
-    gan.train(dataset, noise_size=50, n_epochs=30, n_batch=512)
+    gan.train(dataset, noise_size=50, n_epochs=100, n_batch=512)
     latent_points, labels = gan.generate_noise(50, 20)
     labels = np.ones(20) * 5
     X = gan.generator.predict([latent_points, labels])
@@ -196,3 +204,7 @@ if __name__ == "__main__":
     labels = np.ones(20) * 8
     X = gan.generator.predict([latent_points, labels])
     gan.plot_results(X, 10)
+    
+
+    
+
