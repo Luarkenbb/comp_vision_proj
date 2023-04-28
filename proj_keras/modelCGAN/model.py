@@ -213,6 +213,7 @@ if __name__ == "__main__":
     
     
     gan = CGAN(latent_dim=100, save_path='models/cgan_ep100_lat100')
+    """
     dataset = gan.load_dataset('proj_keras/train.csv')
     gan.train(dataset, n_epochs=100, n_batch=512)
     latent_points, labels = gan.generate_noise(100, 20)
@@ -222,14 +223,23 @@ if __name__ == "__main__":
     gan.plot_results(X, 10)
 
     
+    """
     
-    """
-    model = keras.models.load_model('/Users/martinlam/Documents/GitHub/comp_vision_proj/cgan_generator.h5')
-    latent_points, labels = gan.generate_noise(100, 20)
-    labels = np.ones(20) * 6
-    X = model.predict([latent_points, labels])
-    gan.plot_results(X, 10)
-    """
+    model = keras.models.load_model('/Users/martinlam/Documents/GitHub/comp_vision_proj/models/cgan_ep100_lat100/cgan_generator.h5')
+    #latent_points, labels = gan.generate_noise(100, 20)
+    #labels = np.ones(20) * 8
+    #X = model.predict([latent_points, labels])
+
+    #gan.plot_results(X, 10)
+
+
+    for i in range(10):
+        latent_points, labels = gan.generate_noise(100, 20)
+        labels = np.ones(20) * i
+        X = model.predict([latent_points, labels])
+        gan.plot_results(X, 10)
+    
+    
 
     
 
