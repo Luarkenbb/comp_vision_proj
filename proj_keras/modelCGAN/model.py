@@ -3,9 +3,10 @@ from tensorflow import keras
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import os
 
 class CGAN():
-    def __init__(self, latent_dim):
+    def __init__(self, latent_dim, save_path):
         
        
 
@@ -16,14 +17,14 @@ class CGAN():
         self.discriminator = self.build_discriminator(latent_dim = latent_dim)
         self.generator = self.build_generator(latent_dim = latent_dim)
         self.gan_model = self.build_gan(self.discriminator, self.generator)
-
+        self.losses = []
+        self.save_path = save_path
+        if not os.path.exists(self.save_path):
+            os.makedirs(self.save_path)
         return
     
 
     def load_dataset(self, csv_path):
-        
-
-        
         data = pd.read_csv('proj_keras/train.csv')
         data = data.to_numpy()
         print(data.shape)
@@ -46,7 +47,6 @@ class CGAN():
     
     def generate_noise(self, noise_dim, n_samples, num_classes = 10):
         x_input = np.random.randn(noise_dim * n_samples)
-
         z_input = x_input.reshape(n_samples, noise_dim)
         labels = np.random.randint(0, num_classes, n_samples)
         return [z_input, labels]
@@ -54,7 +54,6 @@ class CGAN():
     def generate_fake_samples(self, latent_dim, n_samples):
         z_input , labels_input = self.generate_noise(latent_dim, n_samples)
         images = self.generator.predict([z_input, labels_input])
-
         y = np.zeros((n_samples, 1))
         return [images, labels_input], y
     
@@ -142,32 +141,51 @@ class CGAN():
         half_batch = int(n_batch / 2)
         # manually enumerate epochs
         for e in range(n_epochs):
-          # enumerate batches over the training set
-          for s in range(steps):
-            #TRAIN THE DISCRIMINATOR
-            # get randomly selected 'real' samples
-            [X_real, labels_real], y_real = self.get_dataset_samples(dataset, half_batch)
-            # update discriminator model weights
-            d_loss1, _ = discriminator.train_on_batch([X_real, labels_real], y_real)
-            # generate 'fake' examples
-            [X_fake, labels], y_fake = self.generate_fake_samples(noise_size, half_batch)
-            # update discriminator model weights
-            d_loss2, _ = discriminator.train_on_batch([X_fake, labels], y_fake)
+            # enumerate batches over the training set
+            for s in range(steps):
+                #TRAIN THE DISCRIMINATOR
+                # get randomly selected 'real' samples
+                [X_real, labels_real], y_real = self.get_dataset_samples(dataset, half_batch)
+                # update discriminator model weights
+                d_loss1, _ = discriminator.train_on_batch([X_real, labels_real], y_real)
+                # generate 'fake' examples
+                [X_fake, labels], y_fake = self.generate_fake_samples(noise_size, half_batch)
+                # update discriminator model weights
+                d_loss2, _ = discriminator.train_on_batch([X_fake, labels], y_fake)
 
-            #TRAIN THE GENERATOR
-            # prepare points in latent space as input for the generator
-            [z_input, labels_input] = self.generate_noise(noise_size, n_batch)
-            # create inverted labels for the fake samples
-            y_gan = np.ones((n_batch, 1))
-            # update the generator via the discriminator's error
-            g_loss = GAN.train_on_batch([z_input, labels_input], y_gan)
-            # summarize loss on this batch
-            print('>%d, %d/%d, d1=%.3f, d2=%.3f g=%.3f' %
-            (e+1, s+1, steps, d_loss1, d_loss2, g_loss))
-          #self.plot_results(X_fake, 8)  
+                #TRAIN THE GENERATOR
+                # prepare points in latent space as input for the generator
+                [z_input, labels_input] = self.generate_noise(noise_size, n_batch)
+                # create inverted labels for the fake samples
+                y_gan = np.ones((n_batch, 1))
+                # update the generator via the discriminator's error
+                g_loss = GAN.train_on_batch([z_input, labels_input], y_gan)
+                # summarize loss on this batch
+                print('>%d, d1=%.3f, d2=%.3f g=%.3f' %
+                (e+1, d_loss1, d_loss2, g_loss))
+            #self.plot_results(X_fake, 8)  
+            #log the losses
+            self.losses.append((d_loss1, d_loss2, g_loss))
+            
+
+
 
         # save the generator model
-        generator.save('cgan_generator.h5')
+        generator.save(os.path.join(self.save_path,'cgan_generator.h5'))
+        # save the discriminator model
+        discriminator.save(os.path.join(self.save_path,'cgan_discriminator.h5'))
+        # log all losses to a file
+        self.save_loss_log(self.losses)
+    
+    def save_loss_log(self, losses):
+        epochs = len(losses)
+        txt_path = os.path.join(self.save_path,'losses.txt')
+
+        with open(txt_path, 'w') as f:
+            f.write('epoch, d_loss1, d_loss2, g_loss\n')
+            for i in range(epochs):
+                row = '%d,%.10f,%.10f,%.10f\n' % (i+1, losses[i][0], losses[i][1], losses[i][2])
+                f.write(row)
 
     def plot_results(self, images, n_cols=None):
         '''visualizes fake images'''
@@ -194,24 +212,24 @@ class CGAN():
 if __name__ == "__main__":
     
     
-    gan = CGAN(latent_dim=100)
-    #dataset = gan.load_dataset('proj_keras/train.csv')
-    #gan.train(dataset, n_epochs=100, n_batch=512)
-    #latent_points, labels = gan.generate_noise(100, 20)
+    gan = CGAN(latent_dim=100, save_path='models/cgan_ep100_lat100')
+    dataset = gan.load_dataset('proj_keras/train.csv')
+    gan.train(dataset, n_epochs=100, n_batch=512)
+    latent_points, labels = gan.generate_noise(100, 20)
 
-    #labels = np.ones(20) * 5
-    #X = gan.generator.predict([latent_points, labels])
-    #gan.plot_results(X, 10)
+    labels = np.ones(20) * 5
+    X = gan.generator.predict([latent_points, labels])
+    gan.plot_results(X, 10)
 
     
     
-    
+    """
     model = keras.models.load_model('/Users/martinlam/Documents/GitHub/comp_vision_proj/cgan_generator.h5')
     latent_points, labels = gan.generate_noise(100, 20)
-    labels = np.ones(20) * 5
+    labels = np.ones(20) * 6
     X = model.predict([latent_points, labels])
     gan.plot_results(X, 10)
-    
+    """
 
     
 
