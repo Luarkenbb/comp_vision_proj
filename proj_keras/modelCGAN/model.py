@@ -5,15 +5,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 class CGAN():
-    def __init__(self):
+    def __init__(self, latent_dim):
         
        
 
         self.opt = keras.optimizers.Adam(learning_rate=0.0002, beta_1=0.5)
         self.loss_fn = keras.losses.BinaryCrossentropy(from_logits=True)
+        self.laten_dim = latent_dim
 
-        self.discriminator = self.build_discriminator()
-        self.generator = self.build_generator()
+        self.discriminator = self.build_discriminator(latent_dim = latent_dim)
+        self.generator = self.build_generator(latent_dim = latent_dim)
         self.gan_model = self.build_gan(self.discriminator, self.generator)
 
         return
@@ -61,7 +62,7 @@ class CGAN():
         # label input
         in_label = keras.layers.Input(shape=(1,))
         # embedding for categorical input
-        li = keras.layers.Embedding(num_classes, 50)(in_label)
+        li = keras.layers.Embedding(num_classes, latent_dim)(in_label)
         # linear multiplication
         n_nodes = 7 * 7
         li = keras.layers.Dense(n_nodes)(li)
@@ -92,9 +93,9 @@ class CGAN():
         
         return model
 
-    def build_discriminator(self, input_shape = (28,28,1), num_classes = 10):
+    def build_discriminator(self, latent_dim, input_shape = (28,28,1), num_classes = 10):
         in_label = keras.layers.Input(shape=(1,))
-        li = keras.layers.Embedding(num_classes, 50)(in_label)
+        li = keras.layers.Embedding(num_classes, latent_dim)(in_label)
 
         n_nodes = input_shape[0] * input_shape[1]
         li=keras.layers.Dense(n_nodes)(li)
@@ -186,31 +187,31 @@ class CGAN():
             plt.axis("off")
         plt.show()
 
-    def train(self, dataset, noise_size=50, n_epochs=30, n_batch=512):
-        self.train_gan(self.generator, self.discriminator, self.gan_model, dataset, noise_size, n_epochs, n_batch)
+    def train(self, dataset, n_epochs=30, n_batch=512):
+        self.train_gan(self.generator, self.discriminator, self.gan_model, dataset, self.laten_dim, n_epochs, n_batch)
         return
 ##test area
 if __name__ == "__main__":
     
     
-    gan = CGAN()
+    gan = CGAN(latent_dim=100)
     #dataset = gan.load_dataset('proj_keras/train.csv')
-    #gan.train(dataset, noise_size=50, n_epochs=100, n_batch=512)
-    #latent_points, labels = gan.generate_noise(50, 20)
+    #gan.train(dataset, n_epochs=100, n_batch=512)
+    #latent_points, labels = gan.generate_noise(100, 20)
+
     #labels = np.ones(20) * 5
     #X = gan.generator.predict([latent_points, labels])
     #gan.plot_results(X, 10)
 
-    #labels = np.ones(20) * 8
-    #X = gan.generator.predict([latent_points, labels])
-    #gan.plot_results(X, 10)
+    
+    
     
     model = keras.models.load_model('/Users/martinlam/Documents/GitHub/comp_vision_proj/cgan_generator.h5')
-    latent_points, labels = gan.generate_noise(50, 20)
-    labels = np.ones(20) * 9
+    latent_points, labels = gan.generate_noise(100, 20)
+    labels = np.ones(20) * 5
     X = model.predict([latent_points, labels])
     gan.plot_results(X, 10)
-
+    
 
     
 
