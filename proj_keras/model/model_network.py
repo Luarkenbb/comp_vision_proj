@@ -14,11 +14,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import os
 
-
-
 # Fully Connected GAN
 '''
-
+'''
 def build_generator(latent_dim):
         # 100->32->64->128->784
 
@@ -60,12 +58,12 @@ def build_discriminator():
 
         model.add(Dense(1, activation='sigmoid'))
         return model
-'''
+
 
 
 # DCGAN - 1
 '''
-'''
+
 # DCGAN implementation, following the example from the tutorial in TensorFlow
 def build_generator(latent_dim):
 
@@ -114,12 +112,12 @@ def build_discriminator():
         model.add(Dense(1, activation='sigmoid'))
 
         return model
-
+'''
 
 
 # SN-GAN
 '''
-'''
+
 def build_generator(latent_dim):
 
         model = Sequential(name='generator')
@@ -186,7 +184,7 @@ def build_discriminator():
         model.add(DenseSN(1, activation='sigmoid'))
 
         return model
-
+'''
 
 
 
