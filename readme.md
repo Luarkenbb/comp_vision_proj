@@ -1,5 +1,6 @@
 ##########
 Please make sure the directory of running those scripts are in this directory
+suggested environment Keras <= 2.3.1
 ##########
 
 ##########
