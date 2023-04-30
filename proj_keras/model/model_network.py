@@ -14,7 +14,6 @@ import os
 
 def build_generator(latent_dim):
         #100->32->64->128->784
-
         model = Sequential(name='generator')
         model.add(Dense(32, input_dim=latent_dim))
         model.add(LeakyReLU(alpha=0.2))
@@ -30,7 +29,6 @@ def build_generator(latent_dim):
 
         model.add(Dense(784, activation='tanh'))
         model.add(Reshape((28, 28, 1)))
-
         return model
 
 def build_discriminator():
