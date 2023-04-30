@@ -1,8 +1,7 @@
 import tensorflow as tf
 
 from model.model_network import build_discriminator, build_generator, build_optimizer
-from model.GAN import GAN, GANMonitor, getModelCheckPoint
-
+from model.GAN import GAN, GANMonitor
 import pandas as pd
 
     
@@ -33,8 +32,7 @@ def runGAN():
     gan.fit(
         X_train,
         epochs=50,
-        callbacks=[getModelCheckPoint('./modelCheckPoint'),
-                   GANMonitor('images',num_img=1, latent_dim=100)]
+        callbacks=[GANMonitor('images',num_img=1, latent_dim=100)]
     )
 
 
